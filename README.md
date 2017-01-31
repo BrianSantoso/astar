@@ -1,5 +1,5 @@
 # A-star-search
-Demonstration of A* Search Algorithm
+Demonstration of A* Search Algorithm.
 Euclidean distance used to calculate heuristic
 
 
