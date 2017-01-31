@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+	
+		<meta charset="utf-8"/>
+		<title>A* Search</title>
+		
+		<style>
+		
+			h1 {
+				
+				color: white;
+				font-family: Comic Sans MS;
+			
+			}
+			
+			.ui {
+			
+				background-color: white;
+			
+			}
+			
+			input[type="checkbox"] {
+			
+				cursor: pointer;
+			
+			}
+			
+			button {
+			
+				cursor: pointer;
+			
+			}
+		
+		</style>
+        
+	</head>
+	
+	<body bgcolor="#1a1a1a">
+	
+		<center>
+			
+			<h1> A* Search </h1>
+			</br>
+			
+			<!--<canvas id="canvas" width="800" height="800" oncontextmenu="return false;"> Sorry. Your browser does not support the canvas element </canvas>-->
+			<canvas id="canvas" width="800" height="800"> Sorry. Your browser does not support the canvas element </canvas>
+		
+			<div id="dashboard" class="ui">
+			
+				</br>
+				<input id="slider" type="range" min="5" max="25" value="13" oldValue="this.value" step="2" onchange="resize(this.value)" />
+				<button type="button" onclick="startSearch()">Start Search</button>
+				</br>
+				
+				<input type="checkbox" class="checks" checked> Show Steps <br>
+				<input type="checkbox" class="checks" checked> Allow Diagonals <br>
+				<input type="checkbox" class="checks" checked> Cut corners <br>
+		
+			</div>
+		
+		</center>
+		
+		
+		
+		<script>
+			
+			"use strict";
+			
+			let	ctx,
+				mouse,
+				grid,
+				checks,
+				start,
+				goal,
+				width,
+				height;
+		
+			window.onload = function(){
+				
+				ctx = canvas.getContext("2d");
+				
+				resize(slider.value, true);
+				
+				mouse = new Mouse();
+				
+				checks = document.getElementsByClassName("checks");
+				
+			};
+			
+			function startSearch(){
+			
+				draw();
+				let path = aStar(start, goal, getOptions());
+				
+			}
+			
+			function getOptions(){
+			
+				return {
+				
+					showSteps: checks[0].checked,
+					diagonals: checks[1].checked,
+					corners: checks[2].checked,
+					heuristic: "euclidean"
+				
+				};
+			
+			}
+			
+			function timestamp() {
+	
+			  return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+			  
+			}
+			
+			Array.prototype.lowest = function(base){
+				
+				// []._ === undefined
+				
+				// if the length is 0, return undefined
+				if(!this.length) return []._;
+				
+				let champ = this[0];
+				if(!!base){
+					
+					// initialize champVal as the property of the first item
+					let champVal = champ[base];
+					
+					// if the property does not exist, return
+					if(champVal === []._){
+						
+						console.error("Property " + "\'" + base + "\'" + " is undefined");
+						return []._;
+					}
+					
+					this.forEach(function(item){
+					
+						let val = item[base];
+						
+						if(val < champVal){
+						
+							champ = item;
+							champVal = val;
+						
+						}
+					
+					});
+				
+				} else {
+					
+					this.forEach(item => champ = Math.min(item, champ));
+				
+				}
+				
+				return champ;
+			
+			};
+			
+			Array.prototype.greatest = function(base){
+			
+				// []._ === undefined
+				
+				// if the length is 0, return undefined
+				if(!this.length) return []._;
+				
+				let champ = this[0];
+				if(!!base){
+					
+					// initialize champVal as the property of the first item
+					let champVal = champ[base];
+					
+					// if the property does not exist, return
+					if(champVal === []._){
+						
+						console.error("Property " + "\'" + base + "\'" + " is undefined");
+						return []._;
+					}
+					
+					this.forEach(function(item){
+					
+						let val = item[base];
+						
+						if(val > champVal){
+						
+							champ = item;
+							champVal = val;
+						
+						}
+					
+					});
+				
+				} else {
+					
+					this.forEach(item => champ = Math.max(item, champ));
+				
+				}
+				
+				return champ;
+			
+			};
+			
+			Array.prototype.remove = function(object){
+			
+				let index = this.indexOf(object);
+				if(!~index)	return;
+				
+				this.splice(index, 1);
+			
+			};
+			
+			Array.prototype.contains = function(object){
+			
+				return !!~this.indexOf(object);
+			
+			};
+			
+			function aStar(start, goal, options = {}){		
+			
+				options = Object.assign({diagonals: false, corners: false, heuristic: "euclidean", showSteps: false}, options);
+				
+				if(start instanceof Flag){
+				
+					start = grid[start.x][start.y];
+				
+				}
+				
+				if(goal instanceof Flag){
+				
+					goal = grid[goal.x][goal.y];
+				
+				}
+				
+				goal.type = 0;
+				
+				let openSet = [start],
+					closedSet = [];
+				
+				openSet[0].g = 0;
+				openSet[0].f = openSet[0].distanceTo(goal);
+				
+				function frame(){
+					
+					let current = openSet.lowest("f");
+					openSet.remove(current);
+					closedSet.push(current);
+					
+					if(current === goal){
+					
+						let path = current.reconstructPath();
+						console.log(path);
+						
+						ctx.strokeStyle = "#1E90FF";
+						//ctx.lineWidth = 7;
+						ctx.lineWidth = 0.11375 * Node.width;
+						ctx.beginPath();
+						ctx.moveTo(path[0].x * Node.width + Node.width/2, path[0].y * Node.height + Node.width/2);
+						
+						path.forEach(n => ctx.lineTo(n.x * Node.width + Node.width/2, n.y * Node.height + Node.width/2));
+						
+						ctx.stroke();
+						
+						return path;
+					}
+					
+					current.getNeighbors(options).forEach(function(neighbor){
+					
+						if(closedSet.contains(neighbor))
+							return;
+							
+						let diagonal = Math.abs(current.x - neighbor.x) & Math.abs(current.y - neighbor.y);
+						
+						if(diagonal){
+						
+							if(!options.diagonals)
+								return;
+								
+								
+							let n1 = grid[neighbor.x ][current.y],
+								n2 = grid[current.x][neighbor.y];
+							
+							if(n1.type & n2.type)
+								return;
+							
+							if(!options.corners){
+							
+								if(n1.type | n2.type)
+									return;
+							
+							}
+						
+						}
+						
+						let temp_g = current.g + current.distanceTo(neighbor),
+						//let temp_g = neighbor.distanceTo(start),
+							temp_h = neighbor.distanceTo(goal),
+							temp_f = temp_g + temp_h;
+						
+						//let shorterPath = temp_g <= neighbor.g,
+						let shorterPath = temp_f <= neighbor.f,
+							notInOpenSet = !openSet.contains(neighbor);
+							
+						if(shorterPath || notInOpenSet){
+						
+							neighbor.g = temp_g;
+							neighbor.h = neighbor.distanceTo(goal);
+							neighbor.f = neighbor.g + neighbor.h;
+							neighbor.parent = current;
+							
+							if(notInOpenSet)
+								openSet.push(neighbor);
+						
+						}
+						
+					
+					});
+					
+					if(options.showSteps){
+						draw();
+						openSet.forEach(node => node.draw("#33ff33"));
+						closedSet.forEach(node => node.draw("#F24537"));
+					}
+				
+					
+					
+					
+					if(!!openSet.length){
+						if(!options.showSteps) frame();
+						else {
+						
+							setTimeout(function(){requestAnimationFrame(frame)}, 0)
+						
+						}
+						
+					} else return "no path";
+					
+					
+				}
+				
+				frame();
+				
+			}
+			
+			function reconstructPath(node){
+				
+				
+				
+				console.log("done")
+				
+				let path = [node];
+				
+				let n = node;
+				while(n.parent !== null){
+					
+					path.push(n.parent);
+					n = n.parent;
+				
+				}
+				
+				return path;
+			
+			}
+			
+			
+			function createGrid(width, height){
+				
+				let g = new Array(width);
+				
+				for(let i = 0; i < width; i++)
+					g[i] = new Array(height);
+					
+				for(let x = 0; x < width; x++){
+					
+					for(let y = 0; y < height; y++){
+					
+						if((x === start.x && y === start.y) || (x === goal.x && y === goal.y)){
+						
+							g[x][y] = new Node(x, y, 0);
+							continue;
+						
+						}
+							
+						g[x][y] = new Node(x, y, +(Math.random() < 0.3));
+					
+					}
+				
+				}
+				
+				return g;
+			
+			}
+			
+			function draw(){
+			
+				ctx.fillStyle = "#000000";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+				for(let x = 0; x < width; x++){
+				
+					for(let y = 0; y < height; y++){
+					
+						grid[x][y].draw();
+					
+					}
+				
+				}
+				
+				start.draw();
+				goal.draw();
+			
+			}
+			
+			function Node(x, y, type = 0){
+				
+				this.x = x;
+				this.y = y;
+				
+				this.g = Infinity;	// g cost
+				this.h;	// heuristic
+				this.f = Infinity; // f cost
+				
+				this.parent = null;
+				
+				this.type = type;
+			
+			}
+			
+			Node.prototype.reconstructPath = function(){
+			
+				//this.draw("#0000ff")
+				
+				let path = [this];
+				
+				let n = this;
+				while(n.parent !== null){
+					
+					path.push(n.parent);
+					n = n.parent;
+					n.draw("#0000ff", 0.3);
+				
+				}
+				
+				return path;
+			
+			}
+			
+			Node.prototype.distanceTo = function(node){
+			
+				return Math.sqrt((this.x - node.x) * (this.x - node.x) + (this.y - node.y) * (this.y - node.y));
+				//return Math.abs(this.x - node.x) + (this.y - node.y);
+			
+			};
+			
+			Node.prototype.getNeighbors = function(options){
+			
+				let neighbors = [];
+				
+				if(this.x > 0){
+				
+					if(grid[this.x - 1][this.y].type !== 1)
+						neighbors.push(grid[this.x - 1][this.y]);
+					
+					if(this.y > 0 && grid[this.x - 1][this.y - 1].type !== 1)
+						neighbors.push(grid[this.x - 1][this.y - 1]);
+						
+					if(this.y < height - 1 && grid[this.x - 1][this.y + 1].type !== 1)
+						neighbors.push(grid[this.x - 1][this.y + 1]);
+				
+				}
+				
+				if(this.x < width - 1){
+				
+					if(grid[this.x + 1][this.y].type !== 1)
+						neighbors.push(grid[this.x + 1][this.y]);
+				
+					if(this.y > 0 && grid[this.x + 1][this.y - 1].type !== 1)
+						neighbors.push(grid[this.x + 1][this.y - 1]);
+						
+					if(this.y < height - 1 && grid[this.x + 1][this.y + 1].type !== 1)
+						neighbors.push(grid[this.x + 1][this.y + 1]);
+				
+				}
+				
+				if(this.y > 0 && grid[this.x][this.y - 1].type !== 1)
+					neighbors.push(grid[this.x][this.y - 1]);
+					
+				if(this.y < height - 1 && grid[this.x][this.y + 1].type !== 1)
+					neighbors.push(grid[this.x][this.y + 1]);
+					
+					
+				return neighbors;
+			
+			};
+			
+			Node.prototype.draw = function(c, alpha = 1){
+	
+				let color;
+	
+				if(this.type === 0) color = "#dddddd";			// normal
+				else if(this.type === 1) color = "#161616";	// wall
+				else if(this.type === 2) color = "#ffff00";
+				else console.error("Type not found.");
+				
+				ctx.fillStyle = c || color;
+				let tempAlpha = ctx.globalAlpha;
+				ctx.globalAlpha = alpha;
+				
+				ctx.fillRect(
+				
+					this.x * Node.width + 0.5,
+					this.y * Node.height + 0.5,
+					Node.width - 0.5,
+					Node.height - 0.5
+				
+				);
+				
+				ctx.globalAlpha = tempAlpha;
+			
+			};
+			
+			function resize(size, init = false){
+				
+				/*if(!init && !confirm("Resize Grid? \nExisting data will be lost")){
+				
+					slider.value = slider.oldValue;
+					return;
+				
+				}*/
+				
+				slider.oldValue = size;
+				width = +size;
+				height = + size;
+				
+				Node.width = canvas.width / width;
+				Node.height = canvas.height / height;
+						
+				start = new Flag(0, 0, 0);
+				goal = new Flag(width - 1, height - 1, 1);
+				grid = createGrid(width, height);
+				
+				setTimeout(draw, 0);
+			
+			}
+			
+			function Flag(x, y, type){
+				
+				this.x = x;
+				this.y = y;
+				this.type = type;
+				
+				this.draw = function(c, alpha){
+				
+					ctx.fillStyle = c || !!this.type ? "#ffa500" : "#ffff00";
+					let tempAlpha = ctx.globalAlpha;
+					ctx.globalAlpha = alpha;
+					
+					ctx.fillRect(
+					
+						this.x * Node.width + 0.5,
+						this.y * Node.height + 0.5,
+						Node.width - 0.5,
+						Node.height - 0.5
+					
+					);
+					
+					ctx.glboalAlpha = tempAlpha;
+					
+				}
+			
+			}
+			
+			function Mouse(){
+			
+				this.x;
+				this.y;
+				this.tiledX;
+				this.tiledY;
+				
+				this.down = false;
+				this.left = false;
+				this.right = false;
+				this.holding = null;
+				
+				this.onDown = function(){
+					
+					draw();
+					
+					if(!!this.holding){
+					
+						this.holding = null;
+						return;
+					
+					} else {
+					
+						if(this.tiledX === start.x && this.tiledY === start.y){
+						
+							this.holding = start;
+							return;
+							
+						}
+						
+						if(this.tiledX === goal.x && this.tiledY === goal.y){
+						
+							this.holding = goal;
+							return;
+						
+						}
+					
+					}
+					
+					const tile = grid[this.tiledX][this.tiledY];
+					
+					/*if(this.holding === null){
+						
+						if(tile.type === 2 || tile.type === 3){
+							this.holding = tile;
+							return;
+						}
+						
+					} else {
+					
+						tile.type = this.holding.type;
+						this.holding.type = 0;
+						this.holding = null;
+						return;
+					
+					}*/
+					
+					tile.type ^= 1;
+					tile.draw();
+				
+				}
+				
+				this.onUp = function(){
+					
+					
+					
+				}
+				
+				this.onMove = function(){
+					
+					if(!!this.holding){
+					
+						this.holding.x = this.tiledX;
+						this.holding.y = this.tiledY;
+						//this.holding.draw();
+						
+						draw();
+					}
+					
+					//draw();
+					
+				}
+				
+				this.updatePos = function(event){
+					
+					this.x = Math.min(Math.max(event.clientX - canvas.getBoundingClientRect().left, 0), canvas.width);
+					this.y = Math.min(Math.max(event.clientY - canvas.getBoundingClientRect().top, 0), canvas.height);
+					
+					this.tiledX = this.x / Node.width | 0;
+					this.tiledY = this.y / Node.height | 0;
+					
+					if(this.onMove) this.onMove();
+					
+				}
+				
+				this.updateClick = function(event, bool){
+								
+					if(bool){
+					
+						if(!!this.onDown) this.onDown();
+						
+					} else {
+					
+						if(!!this.onUp) this.onUp();
+					
+					}
+					
+					if(event.button === 0) this.left = bool;
+					if(event.button === 2) this.right = bool;
+					
+				}
+				
+				canvas.addEventListener("mousemove", function(event){
+					
+					this.updatePos(event);
+					
+				}.bind(this), false);
+				
+				canvas.addEventListener("mousedown", function(event){
+					
+					this.updateClick(event, true);
+					
+				}.bind(this), false);
+				
+				canvas.addEventListener("mouseup", function(event){
+					
+					this.updateClick(event, false);
+					
+				}.bind(this), false);
+			
+			}
+			
+		
+		</script>
+		
+	</body>
+
+</html>
