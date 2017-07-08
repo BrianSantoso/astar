@@ -11,7 +11,7 @@
 			h1 {
 				
 				color: white;
-				font-family: Comic Sans MS;
+				font-family: Trebuchet MS;
 			
 			}
 			
@@ -117,22 +117,19 @@
 			
 			Array.prototype.lowest = function(base){
 				
-				// []._ === undefined
-				
-				// if the length is 0, return undefined
-				if(!this.length) return []._;
+				if(!this.length) return;
 				
 				let champ = this[0];
-				if(!!base){
+				if(base){
 					
 					// initialize champVal as the property of the first item
 					let champVal = champ[base];
 					
 					// if the property does not exist, return
-					if(champVal === []._){
+					if(!champVal){
 						
 						console.error("Property " + "\'" + base + "\'" + " is undefined");
-						return []._;
+						return;
 					}
 					
 					this.forEach(function(item){
@@ -160,22 +157,19 @@
 			
 			Array.prototype.greatest = function(base){
 			
-				// []._ === undefined
-				
-				// if the length is 0, return undefined
-				if(!this.length) return []._;
+				if(!this.length) return;
 				
 				let champ = this[0];
-				if(!!base){
+				if(base){
 					
 					// initialize champVal as the property of the first item
 					let champVal = champ[base];
 					
 					// if the property does not exist, return
-					if(champVal === []._){
+					if(!champVal){
 						
 						console.error("Property " + "\'" + base + "\'" + " is undefined");
-						return []._;
+						return;
 					}
 					
 					this.forEach(function(item){
@@ -204,7 +198,7 @@
 			Array.prototype.remove = function(object){
 			
 				let index = this.indexOf(object);
-				if(!~index)	return;
+				if(index < 0) return;
 				
 				this.splice(index, 1);
 			
@@ -212,13 +206,21 @@
 			
 			Array.prototype.contains = function(object){
 			
-				return !!~this.indexOf(object);
+				return this.indexOf(object) > -1;
 			
 			};
 			
 			function aStar(start, goal, options = {}){		
 			
-				options = Object.assign({diagonals: false, corners: false, heuristic: "euclidean", showSteps: false}, options);
+				options = Object.assign(
+                    {
+                        
+                        diagonals: false,
+                        corners: false,
+                        heuristic: "euclidean",
+                        showSteps: false
+                        
+                    }, options);
 				
 				if(start instanceof Flag){
 				
@@ -325,7 +327,7 @@
 					
 					
 					
-					if(!!openSet.length){
+					if(openSet.length){
 						if(!options.showSteps) frame();
 						else {
 						
@@ -351,7 +353,7 @@
 				let path = [node];
 				
 				let n = node;
-				while(n.parent !== null){
+				while(n.parent){
 					
 					path.push(n.parent);
 					n = n.parent;
@@ -551,7 +553,7 @@
 				
 				this.draw = function(c, alpha){
 				
-					ctx.fillStyle = c || !!this.type ? "#ffa500" : "#ffff00";
+					ctx.fillStyle = c || this.type ? "#ffa500" : "#ffff00";
 					let tempAlpha = ctx.globalAlpha;
 					ctx.globalAlpha = alpha;
 					
@@ -586,7 +588,7 @@
 					
 					draw();
 					
-					if(!!this.holding){
+					if(this.holding){
 					
 						this.holding = null;
 						return;
@@ -640,7 +642,7 @@
 				
 				this.onMove = function(){
 					
-					if(!!this.holding){
+					if(this.holding){
 					
 						this.holding.x = this.tiledX;
 						this.holding.y = this.tiledY;
@@ -669,11 +671,11 @@
 								
 					if(bool){
 					
-						if(!!this.onDown) this.onDown();
+						if(this.onDown) this.onDown();
 						
 					} else {
 					
-						if(!!this.onUp) this.onUp();
+						if(this.onUp) this.onUp();
 					
 					}
 					
