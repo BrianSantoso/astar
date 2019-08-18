@@ -2,5 +2,4 @@
 Demonstration of A* Search Algorithm.
 Euclidean distance used to calculate heuristic
 
-
-Open index.html file to run.
+Demo: https://briansantoso.github.io/astar/
